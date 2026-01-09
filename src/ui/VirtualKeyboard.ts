@@ -159,17 +159,17 @@ export class VirtualKeyboard {
     } = bounds;
 
     // Calculate key dimensions to fit within bounds
-    const padding = 3;
+    const padding = 6;
     const maxCols = Math.max(...KEYBOARD_LAYOUT.map((row) => row.length));
-    const inputBoxHeight = 28;
-    const inputMargin = 5;
+    const inputBoxHeight = 44;
+    const inputMargin = 12;
     const availableHeight = boundsHeight - inputBoxHeight - inputMargin * 2;
 
     const keyWidth = Math.floor(
-      (boundsWidth - padding * (maxCols + 1)) / maxCols
+      (boundsWidth - padding * (maxCols + 1) - 20) / maxCols
     );
     const keyHeight = Math.floor(
-      (availableHeight - padding * (KEYBOARD_LAYOUT.length + 1)) /
+      (availableHeight - padding * (KEYBOARD_LAYOUT.length + 1) - 10) /
         KEYBOARD_LAYOUT.length
     );
 
@@ -177,54 +177,98 @@ export class VirtualKeyboard {
     const startX = boundsX + (boundsWidth - keyboardWidth) / 2;
     const startY = boundsY + inputBoxHeight + inputMargin * 2;
 
-    // Draw background overlay
-    ctx.fillStyle = "rgba(15, 15, 30, 0.95)";
-    this.roundRect(ctx, boundsX, boundsY, boundsWidth, boundsHeight, 8);
+    // Draw background with gradient
+    const bgGradient = ctx.createLinearGradient(
+      boundsX,
+      boundsY,
+      boundsX,
+      boundsY + boundsHeight
+    );
+    bgGradient.addColorStop(0, "rgba(20, 20, 45, 0.98)");
+    bgGradient.addColorStop(1, "rgba(10, 10, 30, 0.98)");
+    ctx.fillStyle = bgGradient;
+    this.roundRect(ctx, boundsX, boundsY, boundsWidth, boundsHeight, 16);
     ctx.fill();
 
-    // Draw border
-    ctx.strokeStyle = "#4444FF";
-    ctx.lineWidth = 2;
-    this.roundRect(ctx, boundsX, boundsY, boundsWidth, boundsHeight, 8);
+    // Draw outer glow
+    ctx.save();
+    ctx.shadowColor = "#00FFAA";
+    ctx.shadowBlur = 20;
+    ctx.strokeStyle = "#00FFAA";
+    ctx.lineWidth = 3;
+    this.roundRect(ctx, boundsX, boundsY, boundsWidth, boundsHeight, 16);
+    ctx.stroke();
+    ctx.restore();
+
+    // Draw inner border
+    ctx.strokeStyle = "rgba(0, 255, 170, 0.3)";
+    ctx.lineWidth = 1;
+    this.roundRect(
+      ctx,
+      boundsX + 4,
+      boundsY + 4,
+      boundsWidth - 8,
+      boundsHeight - 8,
+      12
+    );
     ctx.stroke();
 
     // Draw current text input box
-    const inputBoxX = boundsX + 10;
+    const inputBoxX = boundsX + 16;
     const inputBoxY = boundsY + inputMargin;
-    const inputBoxWidth = boundsWidth - 20;
+    const inputBoxWidth = boundsWidth - 32;
 
-    ctx.fillStyle = "#1a1a2e";
-    this.roundRect(ctx, inputBoxX, inputBoxY, inputBoxWidth, inputBoxHeight, 4);
+    // Input box gradient background
+    const inputGradient = ctx.createLinearGradient(
+      inputBoxX,
+      inputBoxY,
+      inputBoxX,
+      inputBoxY + inputBoxHeight
+    );
+    inputGradient.addColorStop(0, "#0a0a1a");
+    inputGradient.addColorStop(1, "#151528");
+    ctx.fillStyle = inputGradient;
+    this.roundRect(ctx, inputBoxX, inputBoxY, inputBoxWidth, inputBoxHeight, 8);
     ctx.fill();
 
-    ctx.strokeStyle = "#333366";
-    ctx.lineWidth = 1;
-    this.roundRect(ctx, inputBoxX, inputBoxY, inputBoxWidth, inputBoxHeight, 4);
+    // Input box border with subtle glow
+    ctx.save();
+    ctx.shadowColor = "#00FFAA";
+    ctx.shadowBlur = 4;
+    ctx.strokeStyle = "#00FFAA";
+    ctx.lineWidth = 2;
+    this.roundRect(ctx, inputBoxX, inputBoxY, inputBoxWidth, inputBoxHeight, 8);
     ctx.stroke();
+    ctx.restore();
 
-    // Current text with cursor
+    // Current text with animated cursor
     ctx.fillStyle = "#FFFFFF";
-    ctx.font = "bold 14px 'Segoe UI', sans-serif";
+    ctx.font = "bold 18px 'Segoe UI', Arial, sans-serif";
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
-    const displayText =
-      this.currentText + (Math.floor(now / 500) % 2 === 0 ? "|" : "");
+    const cursorVisible = Math.floor(now / 500) % 2 === 0;
+    const displayText = this.currentText + (cursorVisible ? "│" : "");
     ctx.fillText(
       displayText,
-      inputBoxX + 8,
+      inputBoxX + 14,
       inputBoxY + inputBoxHeight / 2,
-      inputBoxWidth - 50
+      inputBoxWidth - 70
     );
 
-    // Character count
-    ctx.fillStyle = "#666666";
-    ctx.font = "10px 'Segoe UI', sans-serif";
-    ctx.textAlign = "right";
-    ctx.fillText(
-      `${this.currentText.length}/${this.maxLength}`,
-      inputBoxX + inputBoxWidth - 5,
-      inputBoxY + inputBoxHeight / 2
-    );
+    // Character count pill
+    const countText = `${this.currentText.length}/${this.maxLength}`;
+    ctx.font = "bold 11px 'Segoe UI', Arial, sans-serif";
+    const countWidth = ctx.measureText(countText).width + 12;
+    const countX = inputBoxX + inputBoxWidth - countWidth - 8;
+    const countY = inputBoxY + (inputBoxHeight - 20) / 2;
+
+    ctx.fillStyle = "rgba(0, 255, 170, 0.15)";
+    this.roundRect(ctx, countX, countY, countWidth, 20, 10);
+    ctx.fill();
+
+    ctx.fillStyle = "#00FFAA";
+    ctx.textAlign = "center";
+    ctx.fillText(countText, countX + countWidth / 2, countY + 11);
 
     // Draw keyboard keys
     for (let row = 0; row < KEYBOARD_LAYOUT.length; row++) {
@@ -243,9 +287,9 @@ export class VirtualKeyboard {
         if (isPressed) {
           const elapsed = now - this.pressAnimationStart;
           if (elapsed < 100) {
-            scale = 1 - 0.15 * (elapsed / 100);
+            scale = 1 - 0.12 * (elapsed / 100);
           } else if (elapsed < 200) {
-            scale = 0.85 + 0.15 * ((elapsed - 100) / 100);
+            scale = 0.88 + 0.12 * ((elapsed - 100) / 100);
           } else {
             this.pressedKey = null;
           }
@@ -256,34 +300,105 @@ export class VirtualKeyboard {
         const offsetX = (keyWidth - scaledWidth) / 2;
         const offsetY = (keyHeight - scaledHeight) / 2;
 
-        // Key background
-        if (isSelected) {
-          ctx.fillStyle = "#4444FF";
-          ctx.shadowColor = "#4444FF";
-          ctx.shadowBlur = 5;
-        } else if (key in SPECIAL_KEYS) {
-          ctx.fillStyle =
-            key === "OK" ? "#336633" : key === "✕" ? "#663333" : "#333344";
-          ctx.shadowBlur = 0;
-        } else {
-          ctx.fillStyle = "#252540";
-          ctx.shadowBlur = 0;
+        const keyX = kx + offsetX;
+        const keyY = ky + offsetY;
+
+        // Key shadow for depth
+        if (!isSelected) {
+          ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+          this.roundRect(ctx, keyX + 2, keyY + 3, scaledWidth, scaledHeight, 6);
+          ctx.fill();
         }
 
-        this.roundRect(
-          ctx,
-          kx + offsetX,
-          ky + offsetY,
-          scaledWidth,
-          scaledHeight,
-          3
-        );
+        // Key background with gradient
+        ctx.save();
+        if (isSelected) {
+          // Selected key - bright cyan glow
+          ctx.shadowColor = "#00FFAA";
+          ctx.shadowBlur = 15;
+          const selectedGradient = ctx.createLinearGradient(
+            keyX,
+            keyY,
+            keyX,
+            keyY + scaledHeight
+          );
+          selectedGradient.addColorStop(0, "#00DDAA");
+          selectedGradient.addColorStop(1, "#00AA88");
+          ctx.fillStyle = selectedGradient;
+        } else if (key === "OK") {
+          // Confirm key - green
+          const okGradient = ctx.createLinearGradient(
+            keyX,
+            keyY,
+            keyX,
+            keyY + scaledHeight
+          );
+          okGradient.addColorStop(0, "#2d5a2d");
+          okGradient.addColorStop(1, "#1a3d1a");
+          ctx.fillStyle = okGradient;
+        } else if (key === "✕") {
+          // Cancel key - red
+          const cancelGradient = ctx.createLinearGradient(
+            keyX,
+            keyY,
+            keyX,
+            keyY + scaledHeight
+          );
+          cancelGradient.addColorStop(0, "#5a2d2d");
+          cancelGradient.addColorStop(1, "#3d1a1a");
+          ctx.fillStyle = cancelGradient;
+        } else if (key in SPECIAL_KEYS) {
+          // Other special keys - darker
+          const specialGradient = ctx.createLinearGradient(
+            keyX,
+            keyY,
+            keyX,
+            keyY + scaledHeight
+          );
+          specialGradient.addColorStop(0, "#2a2a40");
+          specialGradient.addColorStop(1, "#1a1a2d");
+          ctx.fillStyle = specialGradient;
+        } else {
+          // Regular keys
+          const keyGradient = ctx.createLinearGradient(
+            keyX,
+            keyY,
+            keyX,
+            keyY + scaledHeight
+          );
+          keyGradient.addColorStop(0, "#3a3a55");
+          keyGradient.addColorStop(1, "#252538");
+          ctx.fillStyle = keyGradient;
+        }
+
+        this.roundRect(ctx, keyX, keyY, scaledWidth, scaledHeight, 6);
         ctx.fill();
-        ctx.shadowBlur = 0;
+
+        // Key border
+        if (isSelected) {
+          ctx.strokeStyle = "#FFFFFF";
+          ctx.lineWidth = 2;
+        } else {
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.1)";
+          ctx.lineWidth = 1;
+        }
+        this.roundRect(ctx, keyX, keyY, scaledWidth, scaledHeight, 6);
+        ctx.stroke();
+        ctx.restore();
 
         // Key text
-        ctx.fillStyle = "#FFFFFF";
-        ctx.font = `bold ${key.length > 1 ? 9 : 11}px 'Segoe UI', sans-serif`;
+        if (isSelected) {
+          ctx.fillStyle = "#000000";
+        } else if (key === "OK") {
+          ctx.fillStyle = "#66FF66";
+        } else if (key === "✕") {
+          ctx.fillStyle = "#FF6666";
+        } else {
+          ctx.fillStyle = "#FFFFFF";
+        }
+
+        const fontSize = key.length > 1 ? 12 : 14;
+        ctx.font = `bold ${fontSize}px 'Segoe UI', Arial, sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(key, kx + keyWidth / 2, ky + keyHeight / 2);
