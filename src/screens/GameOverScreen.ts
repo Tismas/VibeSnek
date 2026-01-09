@@ -18,9 +18,6 @@ interface GameOverCallbacks {
   onPlayAgain: () => void;
 }
 
-// Name entry state
-type NameEntryState = "none" | "entering" | "complete";
-
 export class GameOverScreen implements Screen {
   private canvas: Canvas;
   private callbacks: GameOverCallbacks;
@@ -31,11 +28,7 @@ export class GameOverScreen implements Screen {
   private playerScores: PlayerScore[] = [];
   private winner: PlayerScore | null = null;
 
-  // High score / name entry state
-  private nameEntryState: NameEntryState = "none";
-  private currentEntryPlayerIndex: number = 0;
-  private entryName: string = "";
-  private nameEntryQueue: PlayerScore[] = [];
+  // High score state
   private newHighScoreRanks: Map<number, number> = new Map(); // playerId -> rank achieved
   private highScoreCelebrationTime: number = 0;
 
@@ -88,7 +81,6 @@ export class GameOverScreen implements Screen {
 
   private processScores(scores: Map<number, number>): void {
     this.playerScores = [];
-    this.nameEntryQueue = [];
 
     for (const [playerId, score] of scores) {
       const player = this.players.find((p) => p.playerId === playerId);
@@ -108,27 +100,30 @@ export class GameOverScreen implements Screen {
 
       this.playerScores.push(playerScore);
 
-      // Queue players who qualify for name entry
+      // Automatically save high scores using the player's lobby name
       if (qualifies && score > 0) {
-        this.nameEntryQueue.push(playerScore);
+        const savedRank = highScoreManager.addScore(
+          playerScore.name,
+          score,
+          this.boardSize
+        );
+        if (savedRank > 0) {
+          this.newHighScoreRanks.set(playerId, savedRank);
+          // Trigger celebration for top 3
+          if (savedRank <= 3) {
+            audioManager.play("combo_activate");
+            this.triggerCelebration();
+          }
+        }
       }
     }
 
     // Sort by score descending
     this.playerScores.sort((a, b) => b.score - a.score);
-    // Also sort name entry queue by score
-    this.nameEntryQueue.sort((a, b) => b.score - a.score);
 
     // Determine winner (highest score)
     if (this.playerScores.length > 0) {
       this.winner = this.playerScores[0];
-    }
-
-    // Start name entry if anyone qualifies
-    if (this.nameEntryQueue.length > 0) {
-      this.nameEntryState = "entering";
-      this.currentEntryPlayerIndex = 0;
-      this.entryName = this.nameEntryQueue[0].name.substring(0, 10); // Pre-fill with player name
     }
   }
 
@@ -163,88 +158,32 @@ export class GameOverScreen implements Screen {
     this.showScores = false;
     this.showPrompt = false;
 
+    // Set celebration time if there were high scores
+    if (this.newHighScoreRanks.size > 0) {
+      this.highScoreCelebrationTime = 0;
+    }
+
     // Setup input handling
     this.inputHandler = (e: KeyboardEvent) => {
-      if (this.nameEntryState === "entering") {
-        this.handleNameEntryInput(e);
-      } else if (
-        this.nameEntryState === "none" ||
-        this.nameEntryState === "complete"
-      ) {
-        if (e.code === "Space" || e.code === "Enter") {
-          this.callbacks.onPlayAgain();
-        }
+      if (e.code === "Space" || e.code === "Enter") {
+        this.callbacks.onPlayAgain();
       }
     };
     window.addEventListener("keydown", this.inputHandler);
 
     // Setup gamepad polling
     this.gamepadPollInterval = window.setInterval(() => {
-      // Only check gamepad for play again when not entering name
-      if (this.nameEntryState !== "entering") {
-        const gamepads = navigator.getGamepads();
-        for (const gamepad of gamepads) {
-          if (gamepad) {
-            // A button (index 0) or Start button (index 9)
-            if (gamepad.buttons[0]?.pressed || gamepad.buttons[9]?.pressed) {
-              this.callbacks.onPlayAgain();
-              break;
-            }
+      const gamepads = navigator.getGamepads();
+      for (const gamepad of gamepads) {
+        if (gamepad) {
+          // A button (index 0) or Start button (index 9)
+          if (gamepad.buttons[0]?.pressed || gamepad.buttons[9]?.pressed) {
+            this.callbacks.onPlayAgain();
+            break;
           }
         }
       }
     }, 100);
-  }
-
-  private handleNameEntryInput(e: KeyboardEvent): void {
-    e.preventDefault();
-
-    if (e.code === "Enter") {
-      // Submit current name
-      this.submitHighScore();
-    } else if (e.code === "Backspace") {
-      // Delete last character
-      this.entryName = this.entryName.slice(0, -1);
-    } else if (e.code === "Escape") {
-      // Skip name entry for this player (use default name)
-      this.submitHighScore();
-    } else if (e.key.length === 1 && this.entryName.length < 10) {
-      // Add character (alphanumeric and some symbols)
-      if (/^[a-zA-Z0-9 _-]$/.test(e.key)) {
-        this.entryName += e.key;
-      }
-    }
-  }
-
-  private submitHighScore(): void {
-    const currentPlayer = this.nameEntryQueue[this.currentEntryPlayerIndex];
-    const name = this.entryName.trim() || currentPlayer.name;
-
-    // Add to high scores
-    const rank = highScoreManager.addScore(
-      name,
-      currentPlayer.score,
-      this.boardSize
-    );
-    this.newHighScoreRanks.set(currentPlayer.playerId, rank);
-
-    // Play celebration sound if it's a top 3 score
-    if (rank <= 3) {
-      audioManager.play("combo_activate");
-      this.triggerCelebration();
-    }
-
-    // Move to next player or finish
-    this.currentEntryPlayerIndex++;
-    if (this.currentEntryPlayerIndex < this.nameEntryQueue.length) {
-      // More players to enter
-      const nextPlayer = this.nameEntryQueue[this.currentEntryPlayerIndex];
-      this.entryName = nextPlayer.name.substring(0, 10);
-    } else {
-      // All done
-      this.nameEntryState = "complete";
-      this.highScoreCelebrationTime = this.animationTime;
-    }
   }
 
   private triggerCelebration(): void {
@@ -289,12 +228,8 @@ export class GameOverScreen implements Screen {
       this.showScores = true;
     }
 
-    // Show prompt after 1500ms (only if not entering name)
-    if (
-      this.animationTime > 1500 &&
-      !this.showPrompt &&
-      this.nameEntryState !== "entering"
-    ) {
+    // Show prompt after 1500ms
+    if (this.animationTime > 1500 && !this.showPrompt) {
       this.showPrompt = true;
     }
 
@@ -359,18 +294,13 @@ export class GameOverScreen implements Screen {
       this.renderScores(ctx, width, height);
     }
 
-    // Name entry overlay
-    if (this.nameEntryState === "entering") {
-      this.renderNameEntry(ctx, width, height);
-    }
-
-    // High score notification after entry complete
-    if (this.nameEntryState === "complete" && this.newHighScoreRanks.size > 0) {
+    // High score notification
+    if (this.newHighScoreRanks.size > 0) {
       this.renderHighScoreNotification(ctx, width, height);
     }
 
     // Play again prompt
-    if (this.showPrompt && this.nameEntryState !== "entering") {
+    if (this.showPrompt) {
       this.renderPrompt(ctx, width, height);
     }
   }
@@ -569,90 +499,6 @@ export class GameOverScreen implements Screen {
     ctx.font = "24px 'Segoe UI', sans-serif";
     ctx.textAlign = "center";
     ctx.fillText("Press SPACE or A to play again", width / 2, promptY);
-  }
-
-  private renderNameEntry(
-    ctx: CanvasRenderingContext2D,
-    width: number,
-    height: number
-  ): void {
-    const currentPlayer = this.nameEntryQueue[this.currentEntryPlayerIndex];
-    if (!currentPlayer) return;
-
-    // Semi-transparent overlay
-    ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-    ctx.fillRect(0, 0, width, height);
-
-    // Modal box
-    const boxWidth = 500;
-    const boxHeight = 280;
-    const boxX = (width - boxWidth) / 2;
-    const boxY = (height - boxHeight) / 2;
-
-    // Box background
-    ctx.fillStyle = "#2a2a4e";
-    ctx.strokeStyle = "#FFD700";
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 15);
-    ctx.fill();
-    ctx.stroke();
-
-    // Title
-    ctx.fillStyle = "#FFD700";
-    ctx.font = "bold 32px 'Segoe UI', sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("🏆 NEW HIGH SCORE! 🏆", width / 2, boxY + 50);
-
-    // Player info
-    ctx.fillStyle = currentPlayer.color;
-    ctx.font = "bold 24px 'Segoe UI', sans-serif";
-    ctx.fillText(
-      `${currentPlayer.name} - ${currentPlayer.score} points`,
-      width / 2,
-      boxY + 95
-    );
-
-    // Rank info
-    ctx.fillStyle = "#AAAAAA";
-    ctx.font = "18px 'Segoe UI', sans-serif";
-    ctx.fillText(
-      `Rank #${currentPlayer.highScoreRank} on ${this.boardSize}×${this.boardSize} board`,
-      width / 2,
-      boxY + 125
-    );
-
-    // Name entry label
-    ctx.fillStyle = "#FFFFFF";
-    ctx.font = "20px 'Segoe UI', sans-serif";
-    ctx.fillText("Enter your name:", width / 2, boxY + 165);
-
-    // Name input box
-    const inputWidth = 300;
-    const inputHeight = 40;
-    const inputX = (width - inputWidth) / 2;
-    const inputY = boxY + 180;
-
-    ctx.fillStyle = "#1a1a2e";
-    ctx.strokeStyle = "#4ECDC4";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.roundRect(inputX, inputY, inputWidth, inputHeight, 5);
-    ctx.fill();
-    ctx.stroke();
-
-    // Name text with cursor
-    const cursorVisible = Math.floor(this.animationTime / 500) % 2 === 0;
-    const displayText = this.entryName + (cursorVisible ? "|" : "");
-
-    ctx.fillStyle = "#FFFFFF";
-    ctx.font = "24px 'Segoe UI', sans-serif";
-    ctx.fillText(displayText, width / 2, inputY + 28);
-
-    // Instructions
-    ctx.fillStyle = "#888888";
-    ctx.font = "16px 'Segoe UI', sans-serif";
-    ctx.fillText("Press ENTER to confirm • ESC to skip", width / 2, boxY + 255);
   }
 
   private renderHighScoreNotification(
