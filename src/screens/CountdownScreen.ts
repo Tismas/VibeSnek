@@ -1,5 +1,6 @@
 import type { Canvas } from "../core/Canvas";
 import { COUNTDOWN_SECONDS } from "../utils/constants";
+import { audioManager } from "../systems/AudioManager";
 
 interface CountdownCallbacks {
   onComplete: () => void;
@@ -13,6 +14,7 @@ export class CountdownScreen {
   private currentCount: number = COUNTDOWN_SECONDS;
   private countdownStartTime: number = 0;
   private isActive: boolean = false;
+  private lastPlayedCount: number = -1;
 
   // Animation state
   private scale: number = 1;
@@ -29,6 +31,11 @@ export class CountdownScreen {
     this.isActive = true;
     this.scale = 1;
     this.opacity = 1;
+    this.lastPlayedCount = -1;
+
+    // Play tick for initial count
+    audioManager.play("countdown_tick");
+    this.lastPlayedCount = this.currentCount;
   }
 
   stop(): void {
@@ -47,6 +54,17 @@ export class CountdownScreen {
       this.currentCount = newCount;
       this.scale = 1.5; // Start big
       this.opacity = 1;
+
+      // Play sound for count change
+      if (this.lastPlayedCount !== newCount) {
+        if (newCount > 0) {
+          audioManager.play("countdown_tick");
+        } else {
+          // "GO!" sound
+          audioManager.play("game_start");
+        }
+        this.lastPlayedCount = newCount;
+      }
     }
 
     // Animate within each second

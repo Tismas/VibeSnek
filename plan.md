@@ -307,30 +307,30 @@ Make sure effects are properly cleared if 2 effects are applied at the same time
 
 ### 8.1 Sound Manager
 
-- [ ] Create `AudioManager` with Web Audio API
-- [ ] Sound pooling for frequent sounds
-- [ ] Volume controls
-- [ ] Mute toggle
+- [x] Create `AudioManager` with Web Audio API
+- [x] Sound pooling for frequent sounds
+- [x] Volume controls
+- [x] Mute toggle
 
 ### 8.2 Sound Effects (Generate with Web Audio)
 
-- [ ] `eat_apple` - Short "pop" or "chomp"
-- [ ] `combo_activate` - Magical chime
-- [ ] `snake_death` - Sad trombone / splat
-- [ ] `tail_shed` - Crumbling sound
-- [ ] `projectile_fire` - Whoosh
-- [ ] `projectile_hit` - Ding/transform sound
-- [ ] `player_join` - Welcome jingle
-- [ ] `player_ready` - Confirmation beep
-- [ ] `game_start` - Energetic fanfare
-- [ ] `countdown_tick` - Tick sound
-- [ ] `ui_navigate` - Soft click
-- [ ] `rain_ambient` - Rain loop (for blue effect)
+- [x] `eat_apple` - Short "pop" or "chomp"
+- [x] `combo_activate` - Magical chime
+- [x] `snake_death` - Sad trombone / splat
+- [x] `tail_shed` - Crumbling sound
+- [x] `projectile_fire` - Whoosh
+- [x] `projectile_hit` - Ding/transform sound
+- [x] `player_join` - Welcome jingle
+- [x] `player_ready` - Confirmation beep
+- [x] `game_start` - Energetic fanfare
+- [x] `countdown_tick` - Tick sound
+- [x] `ui_navigate` - Soft click
+- [x] `rain_ambient` - Rain loop (for blue effect)
 
 ### 8.3 Background Music (Optional)
 
-- [ ] Upbeat chiptune-style loop
-- [ ] Fade in/out on game state changes
+- [x] Upbeat chiptune-style loop
+- [x] Fade in/out on game state changes
 
 ---
 
@@ -338,19 +338,19 @@ Make sure effects are properly cleared if 2 effects are applied at the same time
 
 ### 9.1 Screen Manager
 
-- [ ] Create `ScreenManager` for transitions
-- [ ] Fade transitions between screens
+- [x] Create `ScreenManager` for transitions
+- [x] Fade transitions between screens
 
 ### 9.2 Lobby Screen
 
-- [ ] Render 4 player slots
-- [ ] Handle all lobby logic from Phase 3
-- [ ] Animated background (moving snakes?)
+- [x] Render 4 player slots
+- [x] Handle all lobby logic from Phase 3
+- [x] Animated background (moving snakes?)
 
 ### 9.3 Game Screen
 
-- [ ] Render game board
-- [ ] HUD overlay:
+- [x] Render game board
+- [x] HUD overlay:
   - Player scores (corners)
   - Active effects
   - Time elapsed
@@ -358,12 +358,12 @@ Make sure effects are properly cleared if 2 effects are applied at the same time
 
 ### 9.4 Game Over Screen
 
-- [ ] Show final scores for all players
-- [ ] Winner = highest score (not last survivor)
-- [ ] Highlight winner with crown/celebration
-- [ ] Display high scores from localStorage
-- [ ] "Play Again" → Lobby
-- [ ] Name entry for high score (if qualified)
+- [x] Show final scores for all players
+- [x] Winner = highest score (not last survivor)
+- [x] Highlight winner with crown/celebration
+- [x] Display high scores from localStorage
+- [x] "Play Again" → Lobby
+- [x] Name entry for high score (if qualified)
 
 ---
 
@@ -371,25 +371,25 @@ Make sure effects are properly cleared if 2 effects are applied at the same time
 
 ### 10.1 Score Calculation
 
-- [ ] Points per apple eaten
-- [ ] Bonus for combos
-- [ ] Survival time bonus
-- [ ] Final length bonus
+- [x] Points per apple eaten
+- [x] Bonus for combos
+- [x] Survival time bonus
+- [x] Final length bonus
 
 ### 10.2 LocalStorage Integration
 
-- [ ] Save top 10 scores per board size category (3 leaderboards)
-- [ ] Store: name, score, date
-- [ ] Separate leaderboards: 15×15, 25×25, 50×50
-- [ ] Load on game start
-- [ ] Update after each game
-- [ ] Global rankings (not per-player)
+- [x] Save top 10 scores per board size category (3 leaderboards)
+- [x] Store: name, score, date
+- [x] Separate leaderboards: 15×15, 25×25, 50×50
+- [x] Load on game start
+- [x] Update after each game
+- [x] Global rankings (not per-player)
 
 ### 10.3 High Score Display
 
-- [ ] Leaderboard in lobby (toggle view)
-- [ ] Highlight current players' best scores
-- [ ] New high score celebration animation
+- [x] Leaderboard in lobby (toggle view)
+- [x] Highlight current players' best scores
+- [x] New high score celebration animation
 
 ---
 

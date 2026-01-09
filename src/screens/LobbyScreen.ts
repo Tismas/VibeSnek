@@ -5,6 +5,8 @@ import type {
   PlayerInput,
 } from "../systems/InputManager";
 import { VirtualKeyboard } from "../ui/VirtualKeyboard";
+import { audioManager } from "../systems/AudioManager";
+import { highScoreManager } from "../systems/HighScoreManager";
 import {
   BOARD_SIZES,
   DIFFICULTIES,
@@ -55,6 +57,19 @@ export class LobbyScreen {
   private pulsePhase: number = 0;
   private joinPromptPhase: number = 0;
 
+  // Leaderboard view
+  private showLeaderboard: boolean = false;
+  private leaderboardBoardSize: BoardSize = 25;
+
+  // Background snakes animation
+  private bgSnakes: Array<{
+    segments: Array<{ x: number; y: number }>;
+    color: string;
+    speed: number;
+    direction: number; // radians
+    turnTimer: number;
+  }> = [];
+
   // Layout constants
   private slotWidth: number = 0;
   private slotHeight: number = 0;
@@ -75,6 +90,43 @@ export class LobbyScreen {
 
     this.calculateLayout();
     this.setupInputHandlers();
+    this.initBackgroundSnakes();
+  }
+
+  private initBackgroundSnakes(): void {
+    const width = this.canvas.getWidth();
+    const height = this.canvas.getHeight();
+    const colors = [
+      "#FF6B6B",
+      "#4ECDC4",
+      "#45B7D1",
+      "#96CEB4",
+      "#DDA0DD",
+      "#F7DC6F",
+    ];
+
+    for (let i = 0; i < 6; i++) {
+      const startX = Math.random() * width;
+      const startY = Math.random() * height;
+      const segments: Array<{ x: number; y: number }> = [];
+      const direction = Math.random() * Math.PI * 2;
+
+      // Create initial segments
+      for (let j = 0; j < 12; j++) {
+        segments.push({
+          x: startX - Math.cos(direction) * j * 15,
+          y: startY - Math.sin(direction) * j * 15,
+        });
+      }
+
+      this.bgSnakes.push({
+        segments,
+        color: colors[i % colors.length],
+        speed: 0.8 + Math.random() * 0.4,
+        direction,
+        turnTimer: Math.random() * 3000,
+      });
+    }
   }
 
   private calculateLayout(): void {
@@ -107,8 +159,34 @@ export class LobbyScreen {
   }
 
   private setupInputHandlers(): void {
+    // Handle TAB for leaderboard toggle
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === "Tab") {
+        e.preventDefault();
+        this.showLeaderboard = !this.showLeaderboard;
+        audioManager.play("ui_navigate");
+      }
+      // Handle left/right for leaderboard board size when showing
+      if (this.showLeaderboard) {
+        if (e.code === "ArrowLeft" || e.code === "KeyA") {
+          this.cycleLeaderboardBoardSize(-1);
+          audioManager.play("ui_navigate");
+        } else if (e.code === "ArrowRight" || e.code === "KeyD") {
+          this.cycleLeaderboardBoardSize(1);
+          audioManager.play("ui_navigate");
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    this.unsubscribers.push(() =>
+      window.removeEventListener("keydown", handleKeyDown)
+    );
+
     // Handle player joining
     const unsubJoin = this.inputManager.onPlayerJoined((slot) => {
+      // Play join sound
+      audioManager.play("player_join");
+
       const playerState: PlayerState = {
         slot,
         focus: "name",
@@ -323,10 +401,17 @@ export class LobbyScreen {
     const currentIndex = focusOrder.indexOf(playerState.focus);
     if (currentIndex === -1) return;
 
+    const prevFocus = playerState.focus;
+
     if (direction === "up" && currentIndex > 0) {
       playerState.focus = focusOrder[currentIndex - 1];
     } else if (direction === "down" && currentIndex < focusOrder.length - 1) {
       playerState.focus = focusOrder[currentIndex + 1];
+    }
+
+    // Play navigation sound if focus changed
+    if (prevFocus !== playerState.focus) {
+      audioManager.play("ui_navigate");
     }
   }
 
@@ -341,15 +426,18 @@ export class LobbyScreen {
           playerState.slot.playerId,
           direction
         );
+        audioManager.play("ui_navigate");
         break;
       case "boardSize":
         if (isHost) {
           this.cycleBoardSize(direction);
+          audioManager.play("ui_navigate");
         }
         break;
       case "difficulty":
         if (isHost) {
           this.cycleDifficulty(direction);
+          audioManager.play("ui_navigate");
         }
         break;
     }
@@ -393,6 +481,13 @@ export class LobbyScreen {
     const newReady = !playerState.slot.isReady;
     this.inputManager.setPlayerReady(playerState.slot.playerId, newReady);
 
+    // Play appropriate sound
+    if (newReady) {
+      audioManager.play("player_ready");
+    } else {
+      audioManager.play("ui_navigate");
+    }
+
     // If player unreadied, notify to cancel countdown
     if (!newReady && this.callbacks.onCountdownCancel) {
       this.callbacks.onCountdownCancel();
@@ -421,10 +516,20 @@ export class LobbyScreen {
     this.difficulty = DIFFICULTIES[newIndex];
   }
 
+  private cycleLeaderboardBoardSize(direction: 1 | -1): void {
+    const currentIndex = BOARD_SIZES.indexOf(this.leaderboardBoardSize);
+    const newIndex =
+      (currentIndex + direction + BOARD_SIZES.length) % BOARD_SIZES.length;
+    this.leaderboardBoardSize = BOARD_SIZES[newIndex];
+  }
+
   update(deltaTime: number): void {
     // Update animation phases
     this.pulsePhase += deltaTime * 0.003;
     this.joinPromptPhase += deltaTime * 0.002;
+
+    // Update background snakes
+    this.updateBackgroundSnakes(deltaTime);
 
     // Sync player states with input manager
     for (const player of this.inputManager.getAllPlayers()) {
@@ -432,6 +537,38 @@ export class LobbyScreen {
       if (state) {
         state.slot = player;
       }
+    }
+  }
+
+  private updateBackgroundSnakes(deltaTime: number): void {
+    const width = this.canvas.getWidth();
+    const height = this.canvas.getHeight();
+
+    for (const snake of this.bgSnakes) {
+      // Update turn timer
+      snake.turnTimer -= deltaTime;
+      if (snake.turnTimer <= 0) {
+        // Random turn
+        snake.direction += (Math.random() - 0.5) * 1.0;
+        snake.turnTimer = 1000 + Math.random() * 3000;
+      }
+
+      // Move head
+      const head = snake.segments[0];
+      const newHead = {
+        x: head.x + Math.cos(snake.direction) * snake.speed * deltaTime * 0.05,
+        y: head.y + Math.sin(snake.direction) * snake.speed * deltaTime * 0.05,
+      };
+
+      // Wrap around screen
+      if (newHead.x < -50) newHead.x = width + 50;
+      if (newHead.x > width + 50) newHead.x = -50;
+      if (newHead.y < -50) newHead.y = height + 50;
+      if (newHead.y > height + 50) newHead.y = -50;
+
+      // Move body segments
+      snake.segments.unshift(newHead);
+      snake.segments.pop();
     }
   }
 
@@ -446,33 +583,165 @@ export class LobbyScreen {
     // Title
     this.drawTitle(ctx, width);
 
-    // Draw 4 player slots
-    for (let i = 0; i < MAX_PLAYERS; i++) {
-      this.drawSlot(ctx, i);
-    }
+    // Show either leaderboard or lobby
+    if (this.showLeaderboard) {
+      this.drawLeaderboard(ctx, width, height);
+    } else {
+      // Draw 4 player slots
+      for (let i = 0; i < MAX_PLAYERS; i++) {
+        this.drawSlot(ctx, i);
+      }
 
-    // Draw game settings (only shown if there's at least one player)
-    if (this.players.size > 0) {
-      this.drawGameSettings(ctx, width, height);
-    }
+      // Draw game settings (only shown if there's at least one player)
+      if (this.players.size > 0) {
+        this.drawGameSettings(ctx, width, height);
+      }
 
-    // Draw virtual keyboards for gamepad players editing names
-    const playersArray = Array.from(this.players.values());
-    for (let slotIndex = 0; slotIndex < playersArray.length; slotIndex++) {
-      const playerState = playersArray[slotIndex];
-      if (playerState.virtualKeyboard?.isShowing()) {
-        const pos = this.slotPositions[slotIndex];
-        if (pos) {
-          // Render keyboard inside the slot area
-          const keyboardPadding = 10;
-          playerState.virtualKeyboard.render(ctx, {
-            x: pos.x + keyboardPadding,
-            y: pos.y + keyboardPadding,
-            width: this.slotWidth - keyboardPadding * 2,
-            height: this.slotHeight - keyboardPadding * 2,
-          });
+      // Draw virtual keyboards for gamepad players editing names
+      const playersArray = Array.from(this.players.values());
+      for (let slotIndex = 0; slotIndex < playersArray.length; slotIndex++) {
+        const playerState = playersArray[slotIndex];
+        if (playerState.virtualKeyboard?.isShowing()) {
+          const pos = this.slotPositions[slotIndex];
+          if (pos) {
+            // Render keyboard inside the slot area
+            const keyboardPadding = 10;
+            playerState.virtualKeyboard.render(ctx, {
+              x: pos.x + keyboardPadding,
+              y: pos.y + keyboardPadding,
+              width: this.slotWidth - keyboardPadding * 2,
+              height: this.slotHeight - keyboardPadding * 2,
+            });
+          }
         }
       }
+    }
+
+    // Draw leaderboard toggle hint
+    this.drawLeaderboardHint(ctx, width, height);
+  }
+
+  private drawLeaderboardHint(
+    ctx: CanvasRenderingContext2D,
+    width: number,
+    height: number
+  ): void {
+    ctx.font = "16px 'Segoe UI', sans-serif";
+    ctx.fillStyle = "#666666";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+    ctx.fillText(
+      this.showLeaderboard
+        ? "Press TAB to return to lobby"
+        : "Press TAB to view leaderboard",
+      width / 2,
+      height - 15
+    );
+  }
+
+  private drawLeaderboard(
+    ctx: CanvasRenderingContext2D,
+    width: number,
+    _height: number
+  ): void {
+    const centerX = width / 2;
+    const startY = 140;
+
+    // Leaderboard title
+    ctx.fillStyle = "#FFD700";
+    ctx.font = "bold 36px 'Segoe UI', sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    ctx.fillText("🏆 HIGH SCORES 🏆", centerX, startY);
+
+    // Board size tabs
+    const tabWidth = 100;
+    const tabHeight = 35;
+    const tabY = startY + 60;
+    const tabSpacing = 20;
+    const totalTabWidth =
+      BOARD_SIZES.length * tabWidth + (BOARD_SIZES.length - 1) * tabSpacing;
+    let tabX = centerX - totalTabWidth / 2;
+
+    for (const size of BOARD_SIZES) {
+      const isActive = size === this.leaderboardBoardSize;
+
+      // Tab background
+      ctx.fillStyle = isActive ? "#4ECDC4" : "rgba(255, 255, 255, 0.1)";
+      ctx.beginPath();
+      ctx.roundRect(tabX, tabY, tabWidth, tabHeight, 8);
+      ctx.fill();
+
+      // Tab text
+      ctx.fillStyle = isActive ? "#1a1a2e" : "#888888";
+      ctx.font = `${isActive ? "bold " : ""}18px 'Segoe UI', sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(
+        `${size}×${size}`,
+        tabX + tabWidth / 2,
+        tabY + tabHeight / 2
+      );
+
+      tabX += tabWidth + tabSpacing;
+    }
+
+    // Instructions for changing tab
+    ctx.fillStyle = "#666666";
+    ctx.font = "14px 'Segoe UI', sans-serif";
+    ctx.fillText("← → to change board size", centerX, tabY + tabHeight + 20);
+
+    // Scores list
+    const scores = highScoreManager.getScores(this.leaderboardBoardSize);
+    const listY = tabY + tabHeight + 50;
+    const rowHeight = 40;
+
+    if (scores.length === 0) {
+      ctx.fillStyle = "#666666";
+      ctx.font = "20px 'Segoe UI', sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("No high scores yet!", centerX, listY + 50);
+      ctx.fillText("Be the first to set a record!", centerX, listY + 85);
+    } else {
+      // Header
+      ctx.fillStyle = "#888888";
+      ctx.font = "bold 16px 'Segoe UI', sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillText("RANK", centerX - 200, listY);
+      ctx.fillText("NAME", centerX - 130, listY);
+      ctx.textAlign = "right";
+      ctx.fillText("SCORE", centerX + 130, listY);
+      ctx.fillText("DATE", centerX + 220, listY);
+
+      // Scores
+      scores.forEach((entry, index) => {
+        const y = listY + 30 + index * rowHeight;
+        const isTop3 = index < 3;
+
+        // Rank
+        ctx.textAlign = "left";
+        ctx.fillStyle = isTop3 ? "#FFD700" : "#FFFFFF";
+        ctx.font = `${isTop3 ? "bold " : ""}18px 'Segoe UI', sans-serif`;
+
+        const rankEmoji =
+          index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : "";
+        ctx.fillText(`${rankEmoji} #${index + 1}`, centerX - 200, y);
+
+        // Name
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fillText(entry.name, centerX - 130, y);
+
+        // Score
+        ctx.textAlign = "right";
+        ctx.fillStyle = isTop3 ? "#FFD700" : "#4ECDC4";
+        ctx.fillText(entry.score.toString(), centerX + 130, y);
+
+        // Date
+        ctx.fillStyle = "#666666";
+        ctx.font = "14px 'Segoe UI', sans-serif";
+        const date = new Date(entry.date);
+        ctx.fillText(date.toLocaleDateString(), centerX + 220, y);
+      });
     }
   }
 
@@ -489,17 +758,75 @@ export class LobbyScreen {
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, width, height);
 
-    // Decorative snake pattern in background
-    ctx.globalAlpha = 0.05;
-    for (let i = 0; i < 10; i++) {
-      const x = (Math.sin(this.pulsePhase + i * 0.5) * 0.5 + 0.5) * width;
-      const y = (i / 10) * height;
-      ctx.fillStyle = "#44FF44";
-      ctx.beginPath();
-      ctx.arc(x, y, 30, 0, Math.PI * 2);
-      ctx.fill();
+    // Draw animated background snakes
+    ctx.globalAlpha = 0.15;
+    for (const snake of this.bgSnakes) {
+      this.drawBackgroundSnake(ctx, snake);
     }
     ctx.globalAlpha = 1;
+  }
+
+  private drawBackgroundSnake(
+    ctx: CanvasRenderingContext2D,
+    snake: (typeof this.bgSnakes)[0]
+  ): void {
+    const segments = snake.segments;
+    if (segments.length < 2) return;
+
+    // Draw body with gradient alpha
+    for (let i = segments.length - 1; i >= 0; i--) {
+      const segment = segments[i];
+      const alpha = 1 - i / segments.length;
+      const size = 12 - (i / segments.length) * 6;
+
+      ctx.fillStyle = snake.color;
+      ctx.globalAlpha = 0.15 * alpha;
+      ctx.beginPath();
+      ctx.arc(segment.x, segment.y, size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Draw head with eyes
+    const head = segments[0];
+    ctx.globalAlpha = 0.2;
+    ctx.fillStyle = snake.color;
+    ctx.beginPath();
+    ctx.arc(head.x, head.y, 14, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Eyes
+    const eyeOffset = 5;
+    const eyeAngle = snake.direction;
+    const perpAngle = eyeAngle + Math.PI / 2;
+
+    ctx.fillStyle = "#FFFFFF";
+    ctx.globalAlpha = 0.3;
+    for (const side of [-1, 1]) {
+      const eyeX =
+        head.x +
+        Math.cos(eyeAngle) * 3 +
+        Math.cos(perpAngle) * side * eyeOffset;
+      const eyeY =
+        head.y +
+        Math.sin(eyeAngle) * 3 +
+        Math.sin(perpAngle) * side * eyeOffset;
+      ctx.beginPath();
+      ctx.arc(eyeX, eyeY, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Pupils
+      ctx.fillStyle = "#000000";
+      ctx.beginPath();
+      ctx.arc(
+        eyeX + Math.cos(eyeAngle) * 1.5,
+        eyeY + Math.sin(eyeAngle) * 1.5,
+        2,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+      ctx.fillStyle = "#FFFFFF";
+    }
   }
 
   private drawTitle(ctx: CanvasRenderingContext2D, width: number): void {

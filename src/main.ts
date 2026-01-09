@@ -4,6 +4,8 @@ import { InputManager } from "./systems/InputManager";
 import { LobbyScreen } from "./screens/LobbyScreen";
 import { CountdownScreen } from "./screens/CountdownScreen";
 import { GameScreen } from "./screens/GameScreen";
+import { GameOverScreen } from "./screens/GameOverScreen";
+import { audioManager } from "./systems/AudioManager";
 
 // Initialize the game when DOM is ready
 document.addEventListener("DOMContentLoaded", () => {
@@ -15,6 +17,15 @@ document.addEventListener("DOMContentLoaded", () => {
   const game = new Game(app);
   const inputManager = new InputManager();
 
+  // Initialize audio on first user interaction
+  const initAudio = () => {
+    audioManager.initialize();
+    document.removeEventListener("click", initAudio);
+    document.removeEventListener("keydown", initAudio);
+  };
+  document.addEventListener("click", initAudio);
+  document.addEventListener("keydown", initAudio);
+
   // Store game config and players for creating game screen
   let pendingGameConfig: { boardSize: number; difficulty: string } | null =
     null;
@@ -24,6 +35,9 @@ document.addEventListener("DOMContentLoaded", () => {
     onComplete: () => {
       console.log("Countdown complete! Starting game...");
       game.setState("playing");
+
+      // Start background music
+      audioManager.startMusic();
 
       if (pendingGameConfig) {
         // Create the actual game screen
@@ -43,48 +57,36 @@ document.addEventListener("DOMContentLoaded", () => {
             onGameOver: (scores) => {
               console.log("Game over! Scores:", scores);
               game.setState("gameOver");
-              // TODO: Show game over screen
-              // For now, just show scores
+
+              // Stop background music
+              audioManager.stopMusic();
+
+              // Create and show game over screen
+              const gameOverScreen = new GameOverScreen(
+                game.getCanvas(),
+                scores,
+                inputManager.getAllPlayers(),
+                pendingGameConfig!.boardSize as 15 | 25 | 50,
+                {
+                  onPlayAgain: () => {
+                    // Clean up game over screen
+                    gameOverScreen.onExit?.();
+                    // Reset players ready state
+                    for (const player of inputManager.getAllPlayers()) {
+                      inputManager.setPlayerReady(player.playerId, false);
+                    }
+                    // Return to lobby
+                    game.setState("lobby");
+                    setLobbyScreen();
+                  },
+                }
+              );
+
+              gameOverScreen.onEnter?.();
+
               game.setScreen({
-                update: () => {},
-                render: () => {
-                  const ctx = game.getCanvas().ctx;
-                  const width = game.getCanvas().getWidth();
-                  const height = game.getCanvas().getHeight();
-
-                  ctx.fillStyle = "#1a1a2e";
-                  ctx.fillRect(0, 0, width, height);
-
-                  ctx.fillStyle = "#FF4444";
-                  ctx.font = "bold 64px 'Segoe UI', sans-serif";
-                  ctx.textAlign = "center";
-                  ctx.textBaseline = "middle";
-                  ctx.fillText("GAME OVER", width / 2, height / 2 - 80);
-
-                  ctx.fillStyle = "#FFFFFF";
-                  ctx.font = "32px 'Segoe UI', sans-serif";
-                  let yOffset = 0;
-                  for (const [playerId, score] of scores) {
-                    const player = inputManager
-                      .getAllPlayers()
-                      .find((p) => p.playerId === playerId);
-                    const name = player?.name || `Player ${playerId}`;
-                    ctx.fillText(
-                      `${name}: ${score}`,
-                      width / 2,
-                      height / 2 + yOffset
-                    );
-                    yOffset += 50;
-                  }
-
-                  ctx.fillStyle = "#888888";
-                  ctx.font = "20px 'Segoe UI', sans-serif";
-                  ctx.fillText(
-                    "Press SPACE to return to lobby",
-                    width / 2,
-                    height / 2 + yOffset + 50
-                  );
-                },
+                update: (deltaTime) => gameOverScreen.update(deltaTime),
+                render: (interpolation) => gameOverScreen.render(interpolation),
               });
             },
           }

@@ -6,6 +6,7 @@ import { GrayBlockManager } from "../systems/GrayBlockManager";
 import { ProjectileManager } from "../systems/ProjectileManager";
 import { EffectManager } from "../systems/EffectManager";
 import { GameRenderer } from "../systems/GameRenderer";
+import { audioManager } from "../systems/AudioManager";
 import {
   DIFFICULTY_SPEEDS,
   type BoardSize,
@@ -44,6 +45,9 @@ export class GameScreen {
   // Game state
   private scores: Map<number, number> = new Map();
   private isGameOver: boolean = false;
+  private gameStartTime: number = performance.now();
+  private elapsedTime: number = 0;
+  private snakeDeathTimes: Map<number, number> = new Map(); // playerId -> survival time in ms
 
   // Input handling
   private unsubscribers: Array<() => void> = [];
@@ -85,6 +89,8 @@ export class GameScreen {
       this.updateOccupiedPositions();
       // Spawn random apple where block was
       this.appleManager.spawnApple(block.position, this.getRandomAppleColor());
+      // Play hit sound
+      audioManager.play("projectile_hit");
     });
 
     // Create snakes for each player
@@ -113,6 +119,7 @@ export class GameScreen {
       snake.setTailShedCallback((positions) => {
         this.grayBlockManager.spawnBlocks(positions);
         this.renderer.triggerScreenShake(5);
+        audioManager.play("tail_shed");
       });
 
       this.snakes.set(player.playerId, snake);
@@ -149,6 +156,9 @@ export class GameScreen {
   update(deltaTime: number): void {
     if (this.isGameOver) return;
 
+    // Track elapsed time
+    this.elapsedTime = performance.now() - this.gameStartTime;
+
     // Update renderer animations
     this.renderer.update(deltaTime);
 
@@ -169,12 +179,19 @@ export class GameScreen {
         const apple = this.appleManager.checkCollision(snake);
         if (apple) {
           const triggeredEffect = this.appleManager.consumeApple(apple, snake);
+
+          // Play eat sound
+          audioManager.play("eat_apple");
+
           this.scores.set(
             snake.playerId,
             (this.scores.get(snake.playerId) || 0) + 10
           );
 
           if (triggeredEffect) {
+            // Play combo activation sound
+            audioManager.play("combo_activate");
+
             this.effectManager.applyEffect(apple.color, snake);
             this.scores.set(
               snake.playerId,
@@ -249,6 +266,12 @@ export class GameScreen {
     this.grayBlockManager.spawnBlocks(bodyPositions);
     snake.enterSpectatorMode();
     this.renderer.triggerScreenShake(15);
+
+    // Track survival time
+    this.snakeDeathTimes.set(snake.playerId, this.elapsedTime);
+
+    // Play death sound
+    audioManager.play("snake_death");
   }
 
   private checkGameOver(): void {
@@ -262,12 +285,52 @@ export class GameScreen {
 
     if (aliveCount === 0) {
       this.isGameOver = true;
+      // Stop any ambient sounds
+      audioManager.stopAllAmbient();
+
+      // Calculate final scores with bonuses
+      this.calculateFinalScores();
+
       this.callbacks.onGameOver(this.scores);
+    }
+  }
+
+  private calculateFinalScores(): void {
+    // Find the maximum survival time for bonus calculation
+    let maxSurvivalTime = 0;
+    for (const time of this.snakeDeathTimes.values()) {
+      if (time > maxSurvivalTime) {
+        maxSurvivalTime = time;
+      }
+    }
+
+    for (const snake of this.snakes.values()) {
+      let bonus = 0;
+      const survivalTime = this.snakeDeathTimes.get(snake.playerId) || 0;
+
+      // Survival time bonus: 1 point per second survived
+      const survivalBonus = Math.floor(survivalTime / 1000);
+      bonus += survivalBonus;
+
+      // Last survivor bonus: extra 100 points if you survived the longest
+      if (survivalTime === maxSurvivalTime && this.snakes.size > 1) {
+        bonus += 100;
+      }
+
+      // Final length bonus: 5 points per segment at death
+      // (Snake length is reset after death, so we track differently)
+      // For now, we'll add a flat bonus based on apples eaten
+      // The combo bonus already rewards skilled play
+
+      // Add bonus to score
+      const currentScore = this.scores.get(snake.playerId) || 0;
+      this.scores.set(snake.playerId, currentScore + bonus);
     }
   }
 
   private spawnProjectile(snake: Snake): void {
     this.projectileManager.spawnFromSnake(snake);
+    audioManager.play("projectile_fire");
   }
 
   private triggerAppleRain(): void {
@@ -317,21 +380,157 @@ export class GameScreen {
 
   private renderUI(): void {
     const ctx = this.canvas.ctx;
+    const width = this.canvas.getWidth();
+    const height = this.canvas.getHeight();
 
-    // Score display at top
+    // Format elapsed time
+    const totalSeconds = Math.floor(this.elapsedTime / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    const timeString = `${minutes}:${seconds.toString().padStart(2, "0")}`;
+
+    // Timer at top center
+    ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+    ctx.fillRect(width / 2 - 50, 5, 100, 30);
+
     ctx.font = "bold 20px 'Segoe UI', sans-serif";
-    ctx.textAlign = "left";
+    ctx.fillStyle = "#FFFFFF";
+    ctx.textAlign = "center";
     ctx.textBaseline = "top";
+    ctx.fillText(timeString, width / 2, 10);
 
-    let xOffset = 20;
-    for (const [playerId, score] of this.scores) {
-      const snake = this.snakes.get(playerId);
-      if (!snake) continue;
+    // Player scores in corners
+    this.renderPlayerScores(ctx, width, height);
 
-      const color = snake.isAlive() ? "#FFFFFF" : "#666666";
-      ctx.fillStyle = color;
-      ctx.fillText(`${snake.name}: ${score}`, xOffset, 20);
-      xOffset += 200;
+    // Active global effects indicator
+    this.renderGlobalEffects(ctx, width);
+  }
+
+  private renderPlayerScores(
+    ctx: CanvasRenderingContext2D,
+    width: number,
+    height: number
+  ): void {
+    const playerList = Array.from(this.snakes.values());
+    const corners = [
+      { x: 15, y: 45, align: "left" as const },
+      { x: width - 15, y: 45, align: "right" as const },
+      { x: 15, y: height - 15, align: "left" as const },
+      { x: width - 15, y: height - 15, align: "right" as const },
+    ];
+
+    playerList.forEach((snake, index) => {
+      const corner = corners[index];
+      if (!corner) return;
+
+      const score = this.scores.get(snake.playerId) || 0;
+      const isAlive = snake.isAlive();
+
+      // Background panel
+      ctx.textAlign = corner.align;
+      ctx.textBaseline = index < 2 ? "top" : "bottom";
+
+      const panelWidth = 160;
+      const panelHeight = 50;
+      const panelX =
+        corner.align === "left" ? corner.x - 5 : corner.x - panelWidth + 5;
+      const panelY = index < 2 ? corner.y - 5 : corner.y - panelHeight + 5;
+
+      ctx.fillStyle = isAlive ? "rgba(0, 0, 0, 0.5)" : "rgba(80, 0, 0, 0.5)";
+      ctx.beginPath();
+      ctx.roundRect(panelX, panelY, panelWidth, panelHeight, 8);
+      ctx.fill();
+
+      // Player color indicator
+      const colorX =
+        corner.align === "left" ? panelX + 12 : panelX + panelWidth - 12;
+      const colorY = panelY + panelHeight / 2;
+      ctx.fillStyle = isAlive ? snake.color : "#444444";
+      ctx.beginPath();
+      ctx.arc(colorX, colorY, 8, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Name and score
+      const textX =
+        corner.align === "left" ? panelX + 28 : panelX + panelWidth - 28;
+      ctx.fillStyle = isAlive ? "#FFFFFF" : "#666666";
+      ctx.font = "bold 14px 'Segoe UI', sans-serif";
+      ctx.textBaseline = "middle";
+      ctx.fillText(snake.name, textX, panelY + 16);
+
+      ctx.font = "bold 20px 'Segoe UI', sans-serif";
+      ctx.fillStyle = isAlive ? "#FFD700" : "#666666";
+      ctx.fillText(score.toString(), textX, panelY + 36);
+
+      // Dead indicator
+      if (!isAlive) {
+        ctx.fillStyle = "#FF4444";
+        ctx.font = "bold 10px 'Segoe UI', sans-serif";
+        const deadX =
+          corner.align === "left" ? panelX + panelWidth - 35 : panelX + 35;
+        ctx.textAlign = "center";
+        ctx.fillText("DEAD", deadX, panelY + panelHeight / 2);
+      }
+
+      // Active effect timer on snake
+      const effect = snake.getActiveEffect();
+      if (effect && isAlive) {
+        const progress = snake.getEffectProgress();
+        const effectX =
+          corner.align === "left" ? panelX + panelWidth - 20 : panelX + 20;
+        const effectY = panelY + panelHeight / 2;
+
+        // Effect timer circle
+        ctx.strokeStyle = effect === "red" ? "#FF4444" : "#44FF44";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(
+          effectX,
+          effectY,
+          12,
+          -Math.PI / 2,
+          -Math.PI / 2 + (1 - progress) * Math.PI * 2
+        );
+        ctx.stroke();
+
+        // Effect icon
+        ctx.fillStyle = effect === "red" ? "#FF4444" : "#44FF44";
+        ctx.font = "bold 12px 'Segoe UI', sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(effect === "red" ? "⚡" : "🐢", effectX, effectY);
+      }
+    });
+  }
+
+  private renderGlobalEffects(
+    ctx: CanvasRenderingContext2D,
+    width: number
+  ): void {
+    const blueEffect = this.effectManager.getGlobalEffect("blue");
+    if (blueEffect) {
+      const progress = this.effectManager.getGlobalEffectProgress("blue");
+      const remaining = this.effectManager.getGlobalEffectRemainingTime("blue");
+      const secondsLeft = Math.ceil(remaining / 1000);
+
+      // Rain effect indicator
+      ctx.fillStyle = "rgba(68, 136, 255, 0.8)";
+      ctx.font = "bold 16px 'Segoe UI', sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      ctx.fillText(`🌧️ Rain Effect: ${secondsLeft}s`, width / 2, 42);
+
+      // Progress bar
+      const barWidth = 120;
+      const barHeight = 4;
+      const barX = width / 2 - barWidth / 2;
+      const barY = 62;
+
+      ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+      ctx.fillRect(barX, barY, barWidth, barHeight);
+
+      ctx.fillStyle = "#4488FF";
+      ctx.fillRect(barX, barY, barWidth * (1 - progress), barHeight);
     }
   }
 

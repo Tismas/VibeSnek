@@ -1,5 +1,6 @@
 import type { Snake } from "../entities/Snake";
 import { EFFECT_DURATION, type AppleColor } from "../utils/constants";
+import { audioManager } from "./AudioManager";
 
 export interface ActiveGlobalEffect {
   type: AppleColor;
@@ -73,6 +74,7 @@ export class EffectManager {
     });
 
     this.callbacks.onRainEffectStart();
+    audioManager.startAmbient("rain", "rain");
   }
 
   // Orange effect: Spawn projectile
@@ -96,6 +98,7 @@ export class EffectManager {
         // Handle effect end
         if (color === "blue") {
           this.callbacks.onRainEffectEnd();
+          audioManager.stopAmbient("rain");
         }
       }
     }
@@ -139,6 +142,7 @@ export class EffectManager {
     // End any active effects
     if (this.globalEffects.has("blue")) {
       this.callbacks.onRainEffectEnd();
+      audioManager.stopAmbient("rain");
     }
     this.globalEffects.clear();
   }
