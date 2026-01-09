@@ -110,7 +110,7 @@ Avoid using `any` type, Enums (prefer string union) or any libraries - stick to 
 
 - [x] Game starts when all joined players are ready
 - [x] Minimum 1 player required
-- [ ] 3-2-1 countdown animation before game starts
+- [x] 3-2-1 countdown animation before game starts
 
 ---
 
@@ -118,49 +118,49 @@ Avoid using `any` type, Enums (prefer string union) or any libraries - stick to 
 
 ### 4.1 Snake Base Implementation
 
-- [ ] Create `Snake` class with:
+- [x] Create `Snake` class with:
   - Position array (segments)
   - Direction (current + queued)
   - Speed (tiles per second)
   - Color
   - Player reference
-- [ ] Starting length: 3 segments
-- [ ] Spawn at fixed positions based on player slot:
+- [x] Starting length: 3 segments
+- [x] Spawn at fixed positions based on player slot:
   - Player 1: Top-left corner area
   - Player 2: Top-right corner area
   - Player 3: Bottom-left corner area
   - Player 4: Bottom-right corner area
-- [ ] Initial direction facing toward center
+- [x] Initial direction facing toward center
 
 ### 4.2 Snake Movement
 
-- [ ] Grid-based movement with smooth interpolation
-- [ ] Direction queue to prevent 180° turns
-- [ ] Screen wrapping (exit right → enter left, etc.)
-- [ ] Variable speed support (for power-ups)
+- [x] Grid-based movement with smooth interpolation
+- [x] Direction queue to prevent 180° turns
+- [x] Screen wrapping (exit right → enter left, etc.)
+- [x] Variable speed support (for power-ups)
 
 ### 4.3 Snake Growth & Tail Shedding
 
-- [ ] Grow by 1 segment when eating apple
-- [ ] Track body length
-- [ ] When length > 20:
+- [x] Grow by 1 segment when eating apple
+- [x] Track body length
+- [x] When length > 20:
   - Convert excess segments to gray blocks
   - Reduce snake to 5 segments
   - Play shedding animation/sound
 
 ### 4.4 Snake Collision
 
-- [ ] Self-collision detection → death
-- [ ] Collision with other snakes → death
-- [ ] Collision with gray blocks → death
-- [ ] Collision with apples → consume
+- [x] Self-collision detection → death
+- [x] Collision with other snakes → death
+- [x] Collision with gray blocks → death
+- [x] Collision with apples → consume
 
 ### 4.5 Death Behavior
 
-- [ ] On death, snake body converts to gray blocks
-- [ ] Dead player enters spectator mode
-- [ ] Game continues until ALL players are dead
-- [ ] Last surviving player has advantage to increase score
+- [x] On death, snake body converts to gray blocks
+- [x] Dead player enters spectator mode
+- [x] Game continues until ALL players are dead
+- [x] Last surviving player has advantage to increase score
 
 ---
 
