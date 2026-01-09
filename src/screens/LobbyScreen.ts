@@ -23,6 +23,7 @@ interface LobbyCallbacks {
     boardSize: BoardSize;
     difficulty: Difficulty;
   }) => void;
+  onCountdownCancel?: () => void;
 }
 
 type LobbyFocus =
@@ -184,6 +185,10 @@ export class LobbyScreen {
         } else if (slot.isReady) {
           // If ready, first unready instead of leaving
           this.inputManager.setPlayerReady(input.playerId, false);
+          // Cancel countdown if any player unreadies
+          if (this.callbacks.onCountdownCancel) {
+            this.callbacks.onCountdownCancel();
+          }
         } else {
           // Leave lobby
           this.inputManager.removePlayer(input.playerId);
@@ -387,6 +392,11 @@ export class LobbyScreen {
   private toggleReady(playerState: PlayerState): void {
     const newReady = !playerState.slot.isReady;
     this.inputManager.setPlayerReady(playerState.slot.playerId, newReady);
+
+    // If player unreadied, notify to cancel countdown
+    if (!newReady && this.callbacks.onCountdownCancel) {
+      this.callbacks.onCountdownCancel();
+    }
 
     // Check if all players are ready to start
     if (this.inputManager.areAllPlayersReady() && this.players.size > 0) {

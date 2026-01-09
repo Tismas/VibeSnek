@@ -168,26 +168,26 @@ Avoid using `any` type, Enums (prefer string union) or any libraries - stick to 
 
 ### 5.1 Apple Entity
 
-- [ ] Create `Apple` class with:
+- [x] Create `Apple` class with:
   - Position
   - Color (Red, Green, Blue, Orange, Purple)
   - Spawn animation
-- [ ] 5 colors with equal spawn probability
+- [x] 5 colors with equal spawn probability
 
 ### 5.2 Apple Spawning
 
-- [ ] Maintain minimum 5 apples on map
-- [ ] Spawn at random empty tiles
-- [ ] Avoid spawning on snakes or gray blocks
-- [ ] No respawn if count > 5 (from purple effect)
+- [x] Maintain minimum 5 apples on map
+- [x] Spawn at random empty tiles
+- [x] Avoid spawning on snakes or gray blocks
+- [x] No respawn if count > 5 (from purple effect)
 
 ### 5.3 Combo System
 
-- [ ] Track consecutive same-color apples per snake
-- [ ] Display colored dots above snake head showing current streak (0-2 dots)
-- [ ] Dots match the color of the streak
-- [ ] Trigger effect when 3rd same color is eaten (3-combo)
-- [ ] Reset streak to 1 (new color) when different color eaten
+- [x] Track consecutive same-color apples per snake
+- [x] Display colored dots above snake head showing current streak (0-2 dots)
+- [x] Dots match the color of the streak
+- [x] Trigger effect when 3rd same color is eaten (3-combo)
+- [x] Reset streak to 1 (new color) when different color eaten
 
 ### 5.4 Apple Effects (3-Combo Triggers)
 
@@ -195,36 +195,36 @@ Make sure effects are properly cleared if 2 effects are applied at the same time
 
 #### 🔴 Red - Speed Boost
 
-- [ ] Increase snake speed by 50% for 10 seconds
-- [ ] Speed lines visual effect
-- [ ] Timer indicator on snake
+- [x] Increase snake speed by 50% for 10 seconds
+- [x] Speed lines visual effect
+- [x] Timer indicator on snake
 
 #### 🟢 Green - Slow Down
 
-- [ ] Decrease snake speed by 50% for 10 seconds
-- [ ] Drowsy visual effect (wavy movement)
-- [ ] Timer indicator on snake
+- [x] Decrease snake speed by 50% for 10 seconds
+- [x] Drowsy visual effect (wavy movement)
+- [x] Timer indicator on snake
 
 #### 🔵 Blue - Rain Distortion
 
-- [ ] Apply screen-wide rain shader effect
-- [ ] Distort/blur the game view
-- [ ] Covers entire map, affects ALL players (including triggering player)
-- [ ] Duration: 10 seconds
-- [ ] Rain drops animation overlay
+- [x] Apply screen-wide rain shader effect
+- [x] Distort/blur the game view
+- [x] Covers entire map, affects ALL players (including triggering player)
+- [x] Duration: 10 seconds
+- [x] Rain drops animation overlay
 
 #### 🟠 Orange - Projectile
 
-- [ ] Spawn projectile in snake's facing direction
-- [ ] Projectile travels until hitting edge or block
-- [ ] Gray block hit → transforms into random apple
-- [ ] Visual: glowing orb with trail
+- [x] Spawn projectile in snake's facing direction
+- [x] Projectile travels until hitting edge or block
+- [x] Gray block hit → transforms into random apple
+- [x] Visual: glowing orb with trail
 
 #### 🟣 Purple - Apple Rain
 
-- [ ] Spawn 10 additional apples instantly
-- [ ] Spawn animation (falling from top)
-- [ ] Can exceed 5 apple minimum temporarily
+- [x] Spawn 10 additional apples instantly
+- [x] Spawn animation (falling from top)
+- [x] Can exceed 5 apple minimum temporarily
 
 ---
 
@@ -232,21 +232,21 @@ Make sure effects are properly cleared if 2 effects are applied at the same time
 
 ### 6.1 Gray Blocks
 
-- [ ] Create `GrayBlock` class
-- [ ] Spawned from snake tail shedding
-- [ ] Solid collision (kills snakes)
-- [ ] Can be converted to apple by orange projectile
-- [ ] Subtle pulsing animation
+- [x] Create `GrayBlock` class
+- [x] Spawned from snake tail shedding
+- [x] Solid collision (kills snakes)
+- [x] Can be converted to apple by orange projectile
+- [x] Subtle pulsing animation
 
 ### 6.2 Projectiles
 
-- [ ] Create `Projectile` class
-- [ ] Linear movement in one direction
-- [ ] No screen wrapping - disappears on collision with walls
-- [ ] Pass through snakes (no collision with snakes)
-- [ ] Collision with gray blocks only
-- [ ] Despawn after hitting block or timeout (5 seconds)
-- [ ] Trail particle effect
+- [x] Create `Projectile` class
+- [x] Linear movement in one direction
+- [x] No screen wrapping - disappears on collision with walls
+- [x] Pass through snakes (no collision with snakes)
+- [x] Collision with gray blocks only
+- [x] Despawn after hitting block or timeout (5 seconds)
+- [x] Trail particle effect
 
 ---
 
@@ -254,52 +254,52 @@ Make sure effects are properly cleared if 2 effects are applied at the same time
 
 ### 7.1 Canvas Setup
 
-- [ ] Create responsive canvas (fit to window)
-- [ ] Calculate tile size based on board dimensions
-- [ ] Support multiple board sizes (15×15, 25×25, 50×50)
-- [ ] Maintain aspect ratio
+- [x] Create responsive canvas (fit to window)
+- [x] Calculate tile size based on board dimensions
+- [x] Support multiple board sizes (15×15, 25×25, 50×50)
+- [x] Maintain aspect ratio
 
 ### 7.2 Visual Style - Cartoonish Theme
 
-- [ ] Bright, saturated color palette
-- [ ] Rounded corners on all elements
-- [ ] Subtle drop shadows
-- [ ] Gradient fills for depth
-- [ ] Googly eyes on snake heads
-- [ ] Bouncy animations
+- [x] Bright, saturated color palette
+- [x] Rounded corners on all elements
+- [x] Subtle drop shadows
+- [x] Gradient fills for depth
+- [x] Googly eyes on snake heads
+- [x] Bouncy animations
 
 ### 7.3 Snake Rendering
 
-- [ ] Head: Rounded rectangle with eyes
-- [ ] Body: Connected rounded segments
-- [ ] Tail: Tapered end
-- [ ] Color tint per player
-- [ ] Death animation (explosion/fade)
+- [x] Head: Rounded rectangle with eyes
+- [x] Body: Connected rounded segments
+- [x] Tail: Tapered end
+- [x] Color tint per player
+- [x] Death animation (explosion/fade)
 
 ### 7.4 Apple Rendering
 
-- [ ] Circular with highlight/shine
-- [ ] Leaf on top (small green triangle)
-- [ ] Subtle bobbing animation
-- [ ] Spawn: pop-in scale animation
-- [ ] Consume: shrink + particles
+- [x] Circular with highlight/shine
+- [x] Leaf on top (small green triangle)
+- [x] Subtle bobbing animation
+- [x] Spawn: pop-in scale animation
+- [x] Consume: shrink + particles
 
 ### 7.5 UI Rendering
 
-- [ ] Combo indicator above snake (colored dots)
-- [ ] Active effect timers (circular progress)
-- [ ] Score display per player
-- [ ] Game timer (optional)
+- [x] Combo indicator above snake (colored dots)
+- [x] Active effect timers (circular progress)
+- [x] Score display per player
+- [x] Game timer (optional)
 
 ### 7.6 Effects
 
-- [ ] Screen shake on death
-- [ ] Particle system for:
+- [x] Screen shake on death
+- [x] Particle system for:
   - Apple consumption
   - Tail shedding
   - Power-up activation
-- [ ] Rain overlay (blue combo effect)
-- [ ] Speed lines (red combo effect)
+- [x] Rain overlay (blue combo effect)
+- [x] Speed lines (red combo effect)
 
 ---
 

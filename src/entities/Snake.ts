@@ -408,11 +408,21 @@ export class Snake {
     this.state = "spectating";
   }
 
+  // Get move progress for interpolation (0-1 between moves)
+  getMoveProgress(): number {
+    const effectiveSpeed = this.getSpeed();
+    const moveInterval = 1000 / effectiveSpeed;
+    return Math.min(1, this.moveAccumulator / moveInterval);
+  }
+
   // Get interpolation progress for smooth rendering
-  getInterpolation(interpolation: number): Array<{ x: number; y: number }> {
+  getInterpolation(
+    _frameInterpolation: number
+  ): Array<{ x: number; y: number }> {
+    const moveProgress = this.getMoveProgress();
     return this.segments.map((seg) => ({
-      x: seg.prevX + (seg.x - seg.prevX) * interpolation,
-      y: seg.prevY + (seg.y - seg.prevY) * interpolation,
+      x: seg.prevX + (seg.x - seg.prevX) * moveProgress,
+      y: seg.prevY + (seg.y - seg.prevY) * moveProgress,
     }));
   }
 
