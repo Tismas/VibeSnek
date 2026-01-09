@@ -13,7 +13,7 @@ Avoid using `any` type, Enums (prefer string union) or any libraries - stick to 
 ### 1.1 Project Setup
 
 - [x] Initialize TypeScript project with Vite
-- [ ] Set up folder structure:
+- [x] Set up folder structure:
   ```
   src/
     core/           # Game engine basics
@@ -24,15 +24,15 @@ Avoid using `any` type, Enums (prefer string union) or any libraries - stick to 
     utils/          # Helpers, constants
     assets/         # Sprites, sounds
   ```
-- [ ] Configure canvas rendering with proper scaling
-- [ ] Set up game loop with fixed timestep (60 FPS target)
+- [x] Configure canvas rendering with proper scaling
+- [x] Set up game loop with fixed timestep (60 FPS target)
 
 ### 1.2 Core Game Engine
 
-- [ ] Create `Game` class with state machine (LOBBY → PLAYING → GAME_OVER)
-- [ ] Implement `GameLoop` with delta time handling
-- [ ] Create `EventBus` for decoupled communication
-- [ ] Build `EntityManager` for game objects
+- [x] Create `Game` class with state machine (LOBBY → PLAYING → GAME_OVER)
+- [x] Implement `GameLoop` with delta time handling
+- [x] Create `EventBus` for decoupled communication
+- [x] Build `EntityManager` for game objects
 
 ---
 
@@ -40,36 +40,36 @@ Avoid using `any` type, Enums (prefer string union) or any libraries - stick to 
 
 ### 2.1 Keyboard Input Handler
 
-- [ ] Create `KeyboardInputHandler` class
-- [ ] Map arrow keys / WASD to directions
-- [ ] Handle SPACE for joining lobby
-- [ ] Handle ESC for leaving lobby
-- [ ] Handle ENTER for ready toggle
-- [ ] Support text input mode for name entry
+- [x] Create `KeyboardInputHandler` class
+- [x] Map arrow keys / WASD to directions
+- [x] Handle SPACE for joining lobby
+- [x] Handle ESC for leaving lobby
+- [x] Handle ENTER for ready toggle
+- [x] Support text input mode for name entry
 
 ### 2.2 Gamepad Input Handler
 
-- [ ] Create `GamepadInputHandler` class using Gamepad API
-- [ ] Poll gamepads each frame (`navigator.getGamepads()`)
-- [ ] Map D-pad / left stick to directions
-- [ ] Handle A button for joining
-- [ ] Handle B button for leaving
-- [ ] Handle Y button for ready toggle
-- [ ] Track gamepad connection/disconnection events
+- [x] Create `GamepadInputHandler` class using Gamepad API
+- [x] Poll gamepads each frame (`navigator.getGamepads()`)
+- [x] Map D-pad / left stick to directions
+- [x] Handle A button for joining
+- [x] Handle B button for leaving
+- [x] Handle Y button for ready toggle
+- [x] Track gamepad connection/disconnection events
 
 ### 2.3 Virtual Keyboard (for Gamepad Name Entry)
 
-- [ ] Create on-screen QWERTY keyboard UI
-- [ ] Navigate with D-pad, select with A
-- [ ] Backspace and confirm buttons
-- [ ] Visual feedback on key hover/press
+- [x] Create on-screen QWERTY keyboard UI
+- [x] Navigate with D-pad, select with A
+- [x] Backspace and confirm buttons
+- [x] Visual feedback on key hover/press
 
 ### 2.4 Unified Input Manager
 
-- [ ] Create `InputManager` that abstracts keyboard/gamepad
-- [ ] Assign input sources to player slots
-- [ ] Prevent duplicate device assignments
-- [ ] Track which input method each player uses
+- [x] Create `InputManager` that abstracts keyboard/gamepad
+- [x] Assign input sources to player slots
+- [x] Prevent duplicate device assignments
+- [x] Track which input method each player uses
 
 ---
 
