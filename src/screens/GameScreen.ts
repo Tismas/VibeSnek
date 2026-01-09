@@ -151,6 +151,18 @@ export class GameScreen {
       }
     });
     this.unsubscribers.push(unsubInput);
+
+    // Handle player disconnect mid-game (e.g., gamepad disconnected)
+    const unsubPlayerLeft = this.inputManager.onPlayerLeft((playerId) => {
+      if (this.isGameOver) return;
+
+      const snake = this.snakes.get(playerId);
+      if (snake && snake.isAlive()) {
+        // Kill the disconnected player's snake
+        this.killSnake(snake);
+      }
+    });
+    this.unsubscribers.push(unsubPlayerLeft);
   }
 
   update(deltaTime: number): void {

@@ -395,32 +395,12 @@ Make sure effects are properly cleared if 2 effects are applied at the same time
 
 ## Phase 11: Polish & Testing
 
-### 11.1 Performance Optimization
-
-- [ ] Object pooling for particles/projectiles
-- [ ] Efficient collision detection (spatial hashing if needed)
-- [ ] RequestAnimationFrame optimization
-- [ ] Memory leak prevention
-
-### 11.2 Edge Cases
-
-- [ ] Handle gamepad disconnect mid-game
-- [ ] Handle all players dying simultaneously
-- [ ] Handle rapid input spam
-- [ ] Handle browser tab visibility changes
-
-### 11.3 Accessibility
-
-- [ ] Color-blind friendly apple indicators (shapes)
-- [ ] High contrast mode option
-- [ ] Screen reader support for menus
-
-### 11.4 Testing
-
-- [ ] Test with multiple gamepads
-- [ ] Test all board sizes
-- [ ] Test all power-up combinations
-- [ ] Cross-browser testing (Chrome, Firefox, Safari)
+- [x] Handle gamepad disconnect mid-game
+- [x] Handle all players dying simultaneously
+- [x] Handle rapid input spam
+- [x] Handle browser tab visibility changes
+- [x] Make sure apple does not spawn inside snake's tail
+- [x] Eliminate code duplication and improve visuals
 
 ---
 

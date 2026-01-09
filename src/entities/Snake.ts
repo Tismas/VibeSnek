@@ -155,6 +155,25 @@ export class Snake {
     return new Map(this.activeEffects);
   }
 
+  // Get the primary speed-modifying effect (red or green)
+  getActiveEffect(): "red" | "green" | null {
+    if (this.activeEffects.has("red")) return "red";
+    if (this.activeEffects.has("green")) return "green";
+    return null;
+  }
+
+  // Get the progress (0-1) of the active speed effect
+  getEffectProgress(): number {
+    const effectType = this.getActiveEffect();
+    if (!effectType) return 0;
+
+    const effect = this.activeEffects.get(effectType);
+    if (!effect) return 0;
+
+    const elapsed = performance.now() - effect.startTime;
+    return Math.min(1, elapsed / effect.duration);
+  }
+
   isAlive(): boolean {
     return this.state === "alive";
   }

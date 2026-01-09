@@ -7,6 +7,7 @@ export class GameLoop {
   private readonly timestep: number; // Fixed timestep in ms
   private animationFrameId: number | null = null;
   private isRunning: boolean = false;
+  private isPaused: boolean = false;
 
   private updateCallback: UpdateCallback | null = null;
   private renderCallback: RenderCallback | null = null;
@@ -27,6 +28,7 @@ export class GameLoop {
     if (this.isRunning) return;
 
     this.isRunning = true;
+    this.isPaused = false;
     this.lastTime = performance.now();
     this.accumulator = 0;
     this.loop(this.lastTime);
@@ -34,9 +36,23 @@ export class GameLoop {
 
   stop(): void {
     this.isRunning = false;
+    this.isPaused = false;
     if (this.animationFrameId !== null) {
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
+    }
+  }
+
+  pause(): void {
+    this.isPaused = true;
+  }
+
+  resume(): void {
+    if (this.isPaused && this.isRunning) {
+      this.isPaused = false;
+      // Reset lastTime to prevent huge delta on resume
+      this.lastTime = performance.now();
+      this.accumulator = 0;
     }
   }
 
@@ -44,6 +60,12 @@ export class GameLoop {
     if (!this.isRunning) return;
 
     this.animationFrameId = requestAnimationFrame(this.loop);
+
+    // Skip updates while paused but keep the loop running
+    if (this.isPaused) {
+      this.lastTime = currentTime;
+      return;
+    }
 
     const deltaTime = currentTime - this.lastTime;
     this.lastTime = currentTime;

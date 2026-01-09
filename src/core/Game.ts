@@ -53,8 +53,12 @@ export class Game {
   private setupEventListeners(): void {
     // Handle visibility change to pause/resume
     document.addEventListener("visibilitychange", () => {
-      if (document.hidden && this.state === "playing") {
-        // Could implement pause here if needed
+      if (document.hidden) {
+        // Pause the game loop when tab is hidden
+        this.gameLoop.pause();
+      } else {
+        // Resume when tab becomes visible
+        this.gameLoop.resume();
       }
     });
   }
