@@ -1,16 +1,20 @@
-import type { Canvas } from "../core/Canvas";
-
-export interface VirtualKeyboardConfig {
+export interface VirtualKeyboardCallbacks {
   onCharacter: (char: string) => void;
   onBackspace: () => void;
   onConfirm: () => void;
   onCancel: () => void;
 }
 
+export interface VirtualKeyboardBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 type VirtualKeyboardRow = string[];
 
 const KEYBOARD_LAYOUT: VirtualKeyboardRow[] = [
-  ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"],
   ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
   ["A", "S", "D", "F", "G", "H", "J", "K", "L", "⌫"],
   ["Z", "X", "C", "V", "B", "N", "M", "␣", "OK", "✕"],
@@ -24,20 +28,12 @@ const SPECIAL_KEYS = {
 } as const;
 
 export class VirtualKeyboard {
-  private canvas: Canvas;
-  private config: VirtualKeyboardConfig;
+  private callbacks: VirtualKeyboardCallbacks;
   private isVisible: boolean = false;
 
   // Cursor position
   private cursorRow: number = 1;
   private cursorCol: number = 0;
-
-  // Keyboard dimensions
-  private keyWidth: number = 0;
-  private keyHeight: number = 0;
-  private keyPadding: number = 4;
-  private startX: number = 0;
-  private startY: number = 0;
 
   // Animation
   private pressedKey: { row: number; col: number } | null = null;
@@ -47,34 +43,8 @@ export class VirtualKeyboard {
   private currentText: string = "";
   private maxLength: number = 16;
 
-  constructor(canvas: Canvas, config: VirtualKeyboardConfig) {
-    this.canvas = canvas;
-    this.config = config;
-    this.calculateDimensions();
-  }
-
-  private calculateDimensions(): void {
-    const canvasWidth = this.canvas.getWidth();
-    const canvasHeight = this.canvas.getHeight();
-
-    // Calculate key size based on screen size
-    const maxKeyboardWidth = Math.min(canvasWidth * 0.8, 600);
-    const maxCols = Math.max(...KEYBOARD_LAYOUT.map((row) => row.length));
-
-    this.keyWidth = Math.floor(
-      (maxKeyboardWidth - this.keyPadding * (maxCols + 1)) / maxCols
-    );
-    this.keyHeight = Math.floor(this.keyWidth * 0.8);
-
-    // Center the keyboard
-    const keyboardWidth =
-      this.keyWidth * maxCols + this.keyPadding * (maxCols + 1);
-    const keyboardHeight =
-      this.keyHeight * KEYBOARD_LAYOUT.length +
-      this.keyPadding * (KEYBOARD_LAYOUT.length + 1);
-
-    this.startX = (canvasWidth - keyboardWidth) / 2;
-    this.startY = canvasHeight * 0.5 - keyboardHeight / 2 + 50; // Offset for text display
+  constructor(callbacks: VirtualKeyboardCallbacks) {
+    this.callbacks = callbacks;
   }
 
   show(initialText: string = ""): void {
@@ -82,7 +52,6 @@ export class VirtualKeyboard {
     this.currentText = initialText;
     this.cursorRow = 1;
     this.cursorCol = 0;
-    this.calculateDimensions();
   }
 
   hide(): void {
@@ -146,26 +115,26 @@ export class VirtualKeyboard {
       switch (action) {
         case "backspace":
           this.currentText = this.currentText.slice(0, -1);
-          this.config.onBackspace();
+          this.callbacks.onBackspace();
           break;
         case "space":
           if (this.currentText.length < this.maxLength) {
             this.currentText += " ";
-            this.config.onCharacter(" ");
+            this.callbacks.onCharacter(" ");
           }
           break;
         case "confirm":
-          this.config.onConfirm();
+          this.callbacks.onConfirm();
           break;
         case "cancel":
-          this.config.onCancel();
+          this.callbacks.onCancel();
           break;
       }
     } else {
       // Regular character
       if (this.currentText.length < this.maxLength) {
         this.currentText += key;
-        this.config.onCharacter(key);
+        this.callbacks.onCharacter(key);
       }
     }
   }
@@ -174,66 +143,90 @@ export class VirtualKeyboard {
   backspace(): void {
     if (!this.isVisible) return;
     this.currentText = this.currentText.slice(0, -1);
-    this.config.onBackspace();
+    this.callbacks.onBackspace();
   }
 
-  render(): void {
+  // Render the keyboard within a specific bounds
+  render(ctx: CanvasRenderingContext2D, bounds: VirtualKeyboardBounds): void {
     if (!this.isVisible) return;
 
-    const ctx = this.canvas.ctx;
     const now = performance.now();
+    const {
+      x: boundsX,
+      y: boundsY,
+      width: boundsWidth,
+      height: boundsHeight,
+    } = bounds;
 
-    // Draw semi-transparent background
-    ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
-    ctx.fillRect(0, 0, this.canvas.getWidth(), this.canvas.getHeight());
+    // Calculate key dimensions to fit within bounds
+    const padding = 3;
+    const maxCols = Math.max(...KEYBOARD_LAYOUT.map((row) => row.length));
+    const inputBoxHeight = 28;
+    const inputMargin = 5;
+    const availableHeight = boundsHeight - inputBoxHeight - inputMargin * 2;
 
-    // Draw title
-    ctx.fillStyle = "#FFFFFF";
-    ctx.font = "bold 24px 'Segoe UI', sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText(
-      "Enter Your Name",
-      this.canvas.getWidth() / 2,
-      this.startY - 80
+    const keyWidth = Math.floor(
+      (boundsWidth - padding * (maxCols + 1)) / maxCols
+    );
+    const keyHeight = Math.floor(
+      (availableHeight - padding * (KEYBOARD_LAYOUT.length + 1)) /
+        KEYBOARD_LAYOUT.length
     );
 
-    // Draw current text input box
-    const inputBoxWidth = 300;
-    const inputBoxHeight = 50;
-    const inputBoxX = (this.canvas.getWidth() - inputBoxWidth) / 2;
-    const inputBoxY = this.startY - 60;
+    const keyboardWidth = keyWidth * maxCols + padding * (maxCols + 1);
+    const startX = boundsX + (boundsWidth - keyboardWidth) / 2;
+    const startY = boundsY + inputBoxHeight + inputMargin * 2;
 
-    // Input box background
-    ctx.fillStyle = "#1a1a2e";
-    ctx.strokeStyle = "#4444FF";
-    ctx.lineWidth = 3;
-    this.roundRect(ctx, inputBoxX, inputBoxY, inputBoxWidth, inputBoxHeight, 8);
+    // Draw background overlay
+    ctx.fillStyle = "rgba(15, 15, 30, 0.95)";
+    this.roundRect(ctx, boundsX, boundsY, boundsWidth, boundsHeight, 8);
     ctx.fill();
+
+    // Draw border
+    ctx.strokeStyle = "#4444FF";
+    ctx.lineWidth = 2;
+    this.roundRect(ctx, boundsX, boundsY, boundsWidth, boundsHeight, 8);
+    ctx.stroke();
+
+    // Draw current text input box
+    const inputBoxX = boundsX + 10;
+    const inputBoxY = boundsY + inputMargin;
+    const inputBoxWidth = boundsWidth - 20;
+
+    ctx.fillStyle = "#1a1a2e";
+    this.roundRect(ctx, inputBoxX, inputBoxY, inputBoxWidth, inputBoxHeight, 4);
+    ctx.fill();
+
+    ctx.strokeStyle = "#333366";
+    ctx.lineWidth = 1;
+    this.roundRect(ctx, inputBoxX, inputBoxY, inputBoxWidth, inputBoxHeight, 4);
     ctx.stroke();
 
     // Current text with cursor
     ctx.fillStyle = "#FFFFFF";
-    ctx.font = "bold 28px 'Segoe UI', sans-serif";
-    ctx.textAlign = "center";
+    ctx.font = "bold 14px 'Segoe UI', sans-serif";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
     const displayText =
       this.currentText + (Math.floor(now / 500) % 2 === 0 ? "|" : "");
     ctx.fillText(
       displayText,
-      this.canvas.getWidth() / 2,
-      inputBoxY + inputBoxHeight / 2 + 10
+      inputBoxX + 8,
+      inputBoxY + inputBoxHeight / 2,
+      inputBoxWidth - 50
     );
 
     // Character count
-    ctx.fillStyle = "#888888";
-    ctx.font = "14px 'Segoe UI', sans-serif";
+    ctx.fillStyle = "#666666";
+    ctx.font = "10px 'Segoe UI', sans-serif";
     ctx.textAlign = "right";
     ctx.fillText(
       `${this.currentText.length}/${this.maxLength}`,
       inputBoxX + inputBoxWidth - 5,
-      inputBoxY + inputBoxHeight + 20
+      inputBoxY + inputBoxHeight / 2
     );
 
-    // Draw keyboard
+    // Draw keyboard keys
     for (let row = 0; row < KEYBOARD_LAYOUT.length; row++) {
       const keys = KEYBOARD_LAYOUT[row];
       for (let col = 0; col < keys.length; col++) {
@@ -242,103 +235,60 @@ export class VirtualKeyboard {
         const isPressed =
           this.pressedKey?.row === row && this.pressedKey?.col === col;
 
-        // Calculate key position
-        const x =
-          this.startX +
-          this.keyPadding +
-          col * (this.keyWidth + this.keyPadding);
-        const y =
-          this.startY +
-          this.keyPadding +
-          row * (this.keyHeight + this.keyPadding);
-
-        // Key width adjustment for special keys
-        let keyWidth = this.keyWidth;
-        if (key === "OK" || key === "✕") {
-          keyWidth = this.keyWidth;
-        }
+        const kx = startX + padding + col * (keyWidth + padding);
+        const ky = startY + padding + row * (keyHeight + padding);
 
         // Press animation scale
         let scale = 1;
         if (isPressed) {
           const elapsed = now - this.pressAnimationStart;
           if (elapsed < 100) {
-            scale = 1 - 0.1 * (elapsed / 100);
+            scale = 1 - 0.15 * (elapsed / 100);
           } else if (elapsed < 200) {
-            scale = 0.9 + 0.1 * ((elapsed - 100) / 100);
+            scale = 0.85 + 0.15 * ((elapsed - 100) / 100);
           } else {
             this.pressedKey = null;
           }
         }
 
-        // Draw key background
         const scaledWidth = keyWidth * scale;
-        const scaledHeight = this.keyHeight * scale;
+        const scaledHeight = keyHeight * scale;
         const offsetX = (keyWidth - scaledWidth) / 2;
-        const offsetY = (this.keyHeight - scaledHeight) / 2;
+        const offsetY = (keyHeight - scaledHeight) / 2;
 
+        // Key background
         if (isSelected) {
-          // Selected key - highlighted
           ctx.fillStyle = "#4444FF";
           ctx.shadowColor = "#4444FF";
-          ctx.shadowBlur = 10;
+          ctx.shadowBlur = 5;
         } else if (key in SPECIAL_KEYS) {
-          // Special keys
           ctx.fillStyle =
-            key === "OK" ? "#44AA44" : key === "✕" ? "#AA4444" : "#333355";
+            key === "OK" ? "#336633" : key === "✕" ? "#663333" : "#333344";
           ctx.shadowBlur = 0;
         } else {
-          ctx.fillStyle = "#2a2a4e";
+          ctx.fillStyle = "#252540";
           ctx.shadowBlur = 0;
         }
 
         this.roundRect(
           ctx,
-          x + offsetX,
-          y + offsetY,
+          kx + offsetX,
+          ky + offsetY,
           scaledWidth,
           scaledHeight,
-          6
+          3
         );
         ctx.fill();
         ctx.shadowBlur = 0;
 
-        // Draw key border
-        ctx.strokeStyle = isSelected ? "#6666FF" : "#444466";
-        ctx.lineWidth = 2;
-        this.roundRect(
-          ctx,
-          x + offsetX,
-          y + offsetY,
-          scaledWidth,
-          scaledHeight,
-          6
-        );
-        ctx.stroke();
-
-        // Draw key text
+        // Key text
         ctx.fillStyle = "#FFFFFF";
-        ctx.font = `bold ${key.length > 1 ? 16 : 20}px 'Segoe UI', sans-serif`;
+        ctx.font = `bold ${key.length > 1 ? 9 : 11}px 'Segoe UI', sans-serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(key, x + keyWidth / 2, y + this.keyHeight / 2);
+        ctx.fillText(key, kx + keyWidth / 2, ky + keyHeight / 2);
       }
     }
-
-    // Draw instructions
-    ctx.fillStyle = "#888888";
-    ctx.font = "14px 'Segoe UI', sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "alphabetic";
-    const instructionY =
-      this.startY +
-      (this.keyHeight + this.keyPadding) * KEYBOARD_LAYOUT.length +
-      30;
-    ctx.fillText(
-      "D-pad: Navigate | A: Select | X: Backspace | B: Cancel",
-      this.canvas.getWidth() / 2,
-      instructionY
-    );
   }
 
   private roundRect(

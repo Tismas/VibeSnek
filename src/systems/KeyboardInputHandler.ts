@@ -116,6 +116,10 @@ export class KeyboardInputHandler {
         this.emit({ action: "leave" });
         break;
       case "Enter":
+        this.emit({ action: "confirm" });
+        break;
+      case "Tab":
+        e.preventDefault();
         this.emit({ action: "ready" });
         break;
     }
@@ -128,6 +132,7 @@ export class KeyboardInputHandler {
       "ArrowDown",
       "ArrowLeft",
       "ArrowRight",
+      "Tab",
     ];
     return preventCodes.includes(code);
   }

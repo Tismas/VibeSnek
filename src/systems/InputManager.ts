@@ -166,12 +166,13 @@ export class InputManager {
     // Create player slot
     const playerId = this.nextPlayerId++;
     const availableColor = this.getNextAvailableColor();
+    const slotNumber = this.players.size + 1; // 1-based slot number
 
     const slot: PlayerSlot = {
       playerId,
       inputType,
       inputIndex,
-      name: `Player ${playerId}`,
+      name: `PLAYER ${slotNumber}`,
       color: availableColor,
       isReady: false,
     };

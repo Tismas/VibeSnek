@@ -77,39 +77,39 @@ Avoid using `any` type, Enums (prefer string union) or any libraries - stick to 
 
 ### 3.1 Lobby Screen Layout
 
-- [ ] Create 4 player slot rectangles in 2x2 grid
-- [ ] Slots assigned in join order (first to join = slot 1, etc.)
-- [ ] Design "Join" state UI:
+- [x] Create 4 player slot rectangles in 2x2 grid
+- [x] Slots assigned in join order (first to join = slot 1, etc.)
+- [x] Design "Join" state UI:
   - "Press SPACE (Keyboard)" or "Press A (Controller)"
   - Animated pulse effect to draw attention
   - Controller icon / keyboard icon
 
 ### 3.2 Player Slot (Joined State)
 
-- [ ] Display editable player name (default: "Player 1-4")
-- [ ] Name max length: 16 characters
-- [ ] Color picker carousel (8 colors):
+- [x] Display editable player name (default: "Player 1-4")
+- [x] Name max length: 16 characters
+- [x] Color picker carousel (8 colors):
   - 🔴 Red, 🟢 Green, 🔵 Blue, 🟡 Yellow
   - 🟣 Purple, 🟠 Orange, ⚪ White, 🩷 Pink
-- [ ] Colors already taken by other players are disabled/grayed out
-- [ ] Auto-assign first available color on join
-- [ ] Show input device icon (keyboard/gamepad)
-- [ ] "Leave" instruction (ESC / B button)
-- [ ] Ready checkbox/button
-- [ ] Visual distinction when ready (glow/checkmark)
+- [x] Colors already taken by other players are disabled/grayed out
+- [x] Auto-assign first available color on join
+- [x] Show input device icon (keyboard/gamepad)
+- [x] "Leave" instruction (ESC / B button)
+- [x] Ready checkbox/button
+- [x] Visual distinction when ready (glow/checkmark)
 
 ### 3.3 Host Controls (First Player)
 
-- [ ] Board size selector: 15×15, 25×25, 50×50
-- [ ] Difficulty selector:
+- [x] Board size selector: 15×15, 25×25, 50×50
+- [x] Difficulty selector:
 
   - Easy: 2 tiles/sec
   - Normal: 4 tiles/sec
   - Hard: 8 tiles/sec
   - Insane: 16 tiles/sec
 
-- [ ] Game starts when all joined players are ready
-- [ ] Minimum 1 player required
+- [x] Game starts when all joined players are ready
+- [x] Minimum 1 player required
 - [ ] 3-2-1 countdown animation before game starts
 
 ---
