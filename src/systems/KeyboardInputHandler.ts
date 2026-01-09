@@ -118,10 +118,6 @@ export class KeyboardInputHandler {
       case "Enter":
         this.emit({ action: "confirm" });
         break;
-      case "Tab":
-        e.preventDefault();
-        this.emit({ action: "ready" });
-        break;
     }
   }
 
